@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 )
 
@@ -12,6 +13,7 @@ func main() {
 		Addr:    ":8080",
 	}
 
-	server.ListenAndServe()
+	log.Printf("serving on port %s", port)
+	log.Fatal(server.ListenAndServe())
 
 }
