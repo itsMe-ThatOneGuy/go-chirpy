@@ -6,11 +6,14 @@ import (
 )
 
 func main() {
+	port := "8080"
+	root := "."
 
 	mux := http.NewServeMux()
 	server := http.Server{
+	server := &http.Server{
 		Handler: mux,
-		Addr:    ":8080",
+		Addr:    ":" + port,
 	}
 
 	log.Printf("serving on port %s", port)
