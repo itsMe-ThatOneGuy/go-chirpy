@@ -10,13 +10,11 @@ func main() {
 	port := "8080"
 	root := "."
 
+	apiCfg := apiConfig{}
+
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.Dir(root)))
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(200)
-		w.Write([]byte("OK"))
-	})
+	mux.Handle("/app/", http.StripPrefix("/app", apiCfg.middlewareMetricsInc(http.FileServer(http.Dir(root)))))
+	mux.HandleFunc("/healthz", handleReadCheck)
 
 	server := &http.Server{
 		Handler: mux,
@@ -39,3 +37,8 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	})
 }
 
+func handleReadCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(200)
+	w.Write([]byte("OK"))
+}
