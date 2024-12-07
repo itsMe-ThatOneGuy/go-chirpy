@@ -17,7 +17,7 @@ func main() {
 	mux.Handle("/app/", http.StripPrefix("/app", apiCfg.middlewareMetricsInc(http.FileServer(http.Dir(root)))))
 
 	mux.HandleFunc("GET /api/healthz", handleReadCheck)
-	mux.HandleFunc("GET /admin/metrics", apiCfg.adminHandlerMetrics)
+	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
 
 	server := &http.Server{
@@ -47,7 +47,7 @@ func handleReadCheck(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
 }
 
-func (cfg *apiConfig) adminHandlerMetrics(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 	hits := cfg.fileServerHits.Load()
 
 	htmlTemplate :=
@@ -63,15 +63,6 @@ func (cfg *apiConfig) adminHandlerMetrics(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
 	w.Write([]byte(html))
-}
-
-func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
-	hits := cfg.fileServerHits.Load()
-	msg := fmt.Sprintf("Hits: %d", hits)
-
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(200)
-	w.Write([]byte(msg))
 }
 
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
