@@ -133,8 +133,7 @@ func handleValidateChirp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type jsonResParams struct {
-		Valid bool   `json:"valid"`
-		Body  string `json:"cleaned_body"`
+		Body string `json:"cleaned_body"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
