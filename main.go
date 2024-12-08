@@ -108,11 +108,23 @@ func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
-	cfg.fileServerHits.Store(0)
-	hits := cfg.fileServerHits.Load()
-	msg := fmt.Sprintf("Hits: %d", hits)
+	if cfg.platform != "dev" {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("Reset only allowed in dev environment"))
+		return
+	}
 
-	w.Write([]byte(msg))
+	err := cfg.db.DeleteAllUsers(r.Context())
+	if err != nil {
+		responseError(w, http.StatusInternalServerError, "Error deleting users", err)
+		return
+	}
+
+	cfg.fileServerHits.Store(0)
+	cfg.fileServerHits.Load()
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("hits set to 0 and user table reset"))
 }
 
 func handleValidateChirp(w http.ResponseWriter, r *http.Request) {
