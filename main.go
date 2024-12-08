@@ -9,7 +9,9 @@ import (
 	"os"
 	"strings"
 	"sync/atomic"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/itsMe-ThatOneGuy/go-chirpy/internal/database"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -52,6 +54,7 @@ func main() {
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
 	mux.HandleFunc("POST /api/validate_chirp", handleValidateChirp)
+	mux.HandleFunc("POST /api/users", apiCfg.handleCreateUser)
 
 	server := &http.Server{
 		Handler: mux,
@@ -153,6 +156,44 @@ func handleValidateChirp(w http.ResponseWriter, r *http.Request) {
 
 	jsonResponse(w, http.StatusOK, jsonResParams{
 		Body: clean,
+	})
+
+}
+
+func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
+	type jsonReqParams struct {
+		Email string `json:"email"`
+	}
+
+	type jsonResParams struct {
+		User
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	params := jsonReqParams{}
+	err := decoder.Decode(&params)
+	if err != nil {
+		responseError(w, http.StatusInternalServerError, "Error decoding parameter", err)
+		return
+	}
+	if params.Email == "" {
+		responseError(w, http.StatusBadRequest, "Empty email", nil)
+		return
+	}
+
+	user, err := cfg.db.CreateUser(r.Context(), params.Email)
+	if err != nil {
+		responseError(w, http.StatusInternalServerError, "Error creating user", err)
+		return
+	}
+
+	jsonResponse(w, http.StatusCreated, jsonResParams{
+		User: User{
+			ID:        user.ID,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			Email:     user.Email,
+		},
 	})
 
 }
