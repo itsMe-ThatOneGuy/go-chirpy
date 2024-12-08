@@ -26,6 +26,10 @@ func main() {
 	if dbURL == "" {
 		log.Fatal("DB_URL must be set")
 	}
+	platform := os.Getenv("PLATFORM")
+	if platform == "" {
+		log.Fatal("env variable PLATFORM not set")
+	}
 
 	dbCon, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -38,6 +42,7 @@ func main() {
 	apiCfg := apiConfig{
 		fileServerHits: atomic.Int32{},
 		db:             dbQueries,
+		platform:       platform,
 	}
 
 	mux := http.NewServeMux()
@@ -61,6 +66,8 @@ func main() {
 type apiConfig struct {
 	fileServerHits atomic.Int32
 	db             *database.Queries
+	platform       string
+}
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
