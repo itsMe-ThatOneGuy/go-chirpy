@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync/atomic"
 )
+
+const maxChirpLen = 140
 
 func main() {
 	port := "8080"
@@ -81,7 +84,8 @@ func handleValidateChirp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type jsonResParams struct {
-		Valid bool `json:"valid"`
+		Valid bool   `json:"valid"`
+		Body  string `json:"cleaned_body"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -92,14 +96,15 @@ func handleValidateChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	const maxChirpLen = 140
 	if len(params.Body) > maxChirpLen {
 		responseError(w, http.StatusBadRequest, "Chirp too long", nil)
 		return
 	}
 
+	clean := cleanBody(params.Body, getBlackListWords())
+
 	jsonResponse(w, http.StatusOK, jsonResParams{
-		Valid: true,
+		Body: clean,
 	})
 
 }
@@ -134,4 +139,26 @@ func jsonResponse(w http.ResponseWriter, status int, payload interface{}) {
 	w.WriteHeader(status)
 	w.Write(res)
 
+}
+
+func cleanBody(reqBody string, blWords map[string]struct{}) string {
+	reqWords := strings.Split(reqBody, " ")
+
+	for i, word := range reqWords {
+		lowerCaseWord := strings.ToLower(word)
+		if _, ok := blWords[lowerCaseWord]; ok {
+			reqWords[i] = "****"
+		}
+	}
+	cleaned := strings.Join(reqWords, " ")
+
+	return cleaned
+}
+
+func getBlackListWords() map[string]struct{} {
+	return map[string]struct{}{
+		"kerfuffle": {},
+		"sharbert":  {},
+		"fornax":    {},
+	}
 }
