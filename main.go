@@ -27,17 +27,17 @@ func main() {
 		log.Fatal("DB_URL must be set")
 	}
 
-	db, err := sql.Open("postgres", dbURL)
+	dbCon, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("error connecting to db: %s", err)
 	}
-	defer db.Close()
+	defer dbCon.Close()
 
-	dbQueries := database.New(db)
+	dbQueries := database.New(dbCon)
 
 	apiCfg := apiConfig{
 		fileServerHits: atomic.Int32{},
-		DB:             dbQueries,
+		db:             dbQueries,
 	}
 
 	mux := http.NewServeMux()
@@ -60,7 +60,7 @@ func main() {
 
 type apiConfig struct {
 	fileServerHits atomic.Int32
-	DB             *database.Queries
+	db             *database.Queries
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
