@@ -138,7 +138,16 @@ func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("hits set to 0 and user table reset"))
 }
 
-func handleValidateChirp(w http.ResponseWriter, r *http.Request) {
+func handleValidateChirp(w http.ResponseWriter, body string) string {
+	if len(body) > maxChirpLen {
+		responseError(w, http.StatusBadRequest, "Chirp too long", nil)
+		return ""
+	}
+
+	clean := cleanBody(body, getBlackListWords())
+
+	return clean
+}
 	type jsonReqParams struct {
 		Body string `json:"body"`
 	}
