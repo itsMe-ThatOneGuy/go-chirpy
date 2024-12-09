@@ -53,7 +53,7 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", handleReadCheck)
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
-	mux.HandleFunc("POST /api/validate_chirp", handleValidateChirp)
+	mux.HandleFunc("POST /api/chirps", apiCfg.handleChirp)
 	mux.HandleFunc("POST /api/users", apiCfg.handleCreateUser)
 
 	server := &http.Server{
@@ -148,33 +148,43 @@ func handleValidateChirp(w http.ResponseWriter, body string) string {
 
 	return clean
 }
+
+func (cfg *apiConfig) handleChirp(w http.ResponseWriter, r *http.Request) {
 	type jsonReqParams struct {
-		Body string `json:"body"`
+		Body   string    `json:"body"`
+		UserID uuid.UUID `json:"user_id"`
 	}
 
 	type jsonResParams struct {
-		Body string `json:"cleaned_body"`
+		Chirp
 	}
 
 	decoder := json.NewDecoder(r.Body)
 	params := jsonReqParams{}
 	err := decoder.Decode(&params)
 	if err != nil {
-		responseError(w, http.StatusInternalServerError, "Error decoding parameter", err)
+		responseError(w, http.StatusInternalServerError, "Error decoding parameter 1", err)
 		return
 	}
 
-	if len(params.Body) > maxChirpLen {
-		responseError(w, http.StatusBadRequest, "Chirp too long", nil)
-		return
-	}
-
-	clean := cleanBody(params.Body, getBlackListWords())
-
-	jsonResponse(w, http.StatusOK, jsonResParams{
-		Body: clean,
+	chirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
+		Body:   handleValidateChirp(w, params.Body),
+		UserID: params.UserID,
 	})
+	if err != nil {
+		responseError(w, http.StatusInternalServerError, "Error creating chirp", err)
+		return
+	}
 
+	jsonResponse(w, http.StatusCreated, jsonResParams{
+		Chirp: Chirp{
+			ID:        chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      chirp.Body,
+			UserID:    chirp.UserID,
+		},
+	})
 }
 
 func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
