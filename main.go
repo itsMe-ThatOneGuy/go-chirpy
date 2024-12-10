@@ -55,6 +55,7 @@ func main() {
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
 	mux.HandleFunc("POST /api/chirps", apiCfg.handleChirp)
 	mux.HandleFunc("GET /api/chirps", apiCfg.handleGetChirps)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handleGetChirp)
 	mux.HandleFunc("POST /api/users", apiCfg.handleCreateUser)
 
 	server := &http.Server{
@@ -211,6 +212,28 @@ func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonResponse(w, http.StatusOK, chirps)
+}
+
+func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, r *http.Request) {
+	strChirpID := r.PathValue("chirpID")
+	uuidChirpID, err := uuid.Parse(strChirpID)
+	if err != nil {
+		responseError(w, http.StatusInternalServerError, "Invaild chirpID", err)
+		return
+	}
+
+	chirp, err := cfg.db.GetChirp(r.Context(), uuidChirpID)
+	if err != nil {
+		responseError(w, http.StatusNotFound, "Could not get chirp", err)
+	}
+
+	jsonResponse(w, http.StatusOK, Chirp{
+		ID:        chirp.ID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+		Body:      chirp.Body,
+		UserID:    chirp.UserID,
+	})
 }
 
 func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
