@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/itsMe-ThatOneGuy/go-chirpy/internal/auth"
 	"github.com/itsMe-ThatOneGuy/go-chirpy/internal/database"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -238,7 +239,8 @@ func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	type jsonReqParams struct {
-		Email string `json:"email"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	type jsonResParams struct {
@@ -257,7 +259,19 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := cfg.db.CreateUser(r.Context(), params.Email)
+	hashedPassword, err := auth.HashPassword(params.Password)
+	if err != nil {
+		responseError(w, http.StatusInternalServerError, "Error hashing password", err)
+		return
+	}
+
+	log.Printf("CREATE Request password: %v", params.Password)
+	log.Printf("CREATE hashed password: %v", hashedPassword)
+
+	user, err := cfg.db.CreateUser(r.Context(), database.CreateUserParams{
+		Email:          params.Email,
+		HashedPassword: hashedPassword,
+	})
 	if err != nil {
 		responseError(w, http.StatusInternalServerError, "Error creating user", err)
 		return
