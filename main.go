@@ -58,6 +58,7 @@ func main() {
 	mux.HandleFunc("GET /api/chirps", apiCfg.handleGetChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handleGetChirp)
 	mux.HandleFunc("POST /api/users", apiCfg.handleCreateUser)
+	mux.HandleFunc("POST /api/login", apiCfg.handleLogin)
 
 	server := &http.Server{
 		Handler: mux,
@@ -286,6 +287,48 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 
+}
+
+func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
+	type jsonReqParams struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	params := jsonReqParams{}
+	err := decoder.Decode(&params)
+	if err != nil {
+		responseError(w, http.StatusInternalServerError, "Error decoding parameter", err)
+		return
+	}
+	if params.Email == "" {
+		responseError(w, http.StatusBadRequest, "Empty email", nil)
+		return
+	}
+
+	user, err := cfg.db.GetUserByEmail(r.Context(), params.Email)
+	if err != nil {
+		responseError(w, http.StatusUnauthorized, "Incorrect email or password", nil)
+		return
+	}
+
+	log.Printf("CHECK REQUEST Password: %v", params.Password)
+	log.Printf("CHECK DB Hashed Password: %v", user.HashedPassword)
+
+	err = auth.CheckPasswordHash(params.Password, user.HashedPassword)
+	log.Println(err)
+	if err != nil {
+		responseError(w, http.StatusUnauthorized, "Incorrect email or password", nil)
+		return
+	}
+
+	jsonResponse(w, http.StatusOK, User{
+		ID:        user.ID,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+		Email:     user.Email,
+	})
 }
 
 func responseError(w http.ResponseWriter, status int, msg string, err error) {
