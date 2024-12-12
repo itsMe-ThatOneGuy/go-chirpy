@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -27,4 +28,28 @@ func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 
 	return token.SignedString([]byte(tokenSecret))
 }
+
+func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(t *jwt.Token) (interface{}, error) {
+		return []byte(tokenSecret), nil
+	})
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+
+	if !token.Valid {
+		return uuid.UUID{}, fmt.Errorf("invalid token")
+	}
+
+	strUserID, err := token.Claims.GetSubject()
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+
+	uuidUserID, err := uuid.Parse(strUserID)
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+
+	return uuidUserID, nil
 }
