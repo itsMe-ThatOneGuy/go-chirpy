@@ -33,6 +33,10 @@ func main() {
 	if platform == "" {
 		log.Fatal("env variable PLATFORM not set")
 	}
+	seceret := os.Getenv("SECERET")
+	if seceret == "" {
+		log.Fatal("env variable SECERET not set")
+	}
 
 	dbCon, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -46,6 +50,7 @@ func main() {
 		fileServerHits: atomic.Int32{},
 		db:             dbQueries,
 		platform:       platform,
+		seceret:        seceret,
 	}
 
 	mux := http.NewServeMux()
@@ -74,6 +79,7 @@ type apiConfig struct {
 	fileServerHits atomic.Int32
 	db             *database.Queries
 	platform       string
+	seceret        string
 }
 
 type User struct {
