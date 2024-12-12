@@ -266,9 +266,6 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("CREATE Request password: %v", params.Password)
-	log.Printf("CREATE hashed password: %v", hashedPassword)
-
 	user, err := cfg.db.CreateUser(r.Context(), database.CreateUserParams{
 		Email:          params.Email,
 		HashedPassword: hashedPassword,
@@ -312,9 +309,6 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 		responseError(w, http.StatusUnauthorized, "Incorrect email or password", nil)
 		return
 	}
-
-	log.Printf("CHECK REQUEST Password: %v", params.Password)
-	log.Printf("CHECK DB Hashed Password: %v", user.HashedPassword)
 
 	err = auth.CheckPasswordHash(params.Password, user.HashedPassword)
 	log.Println(err)
