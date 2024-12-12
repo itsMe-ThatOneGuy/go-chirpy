@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -37,15 +36,38 @@ func TestCheckPasswordHash(t *testing.T) {
 	}
 }
 
-func TestMakeJWT(t *testing.T) {
+func TestJWT(t *testing.T) {
 	userID, _ := uuid.Parse("a0de6ac2-0b73-432c-a5db-b96d6451251f")
 	tokenSecret := "test"
-	expiresIn := time.Duration.Seconds(30)
+	wrongSecret := "wrong"
 
-	jwt, err := MakeJWT(userID, tokenSecret, time.Duration(expiresIn))
+	JWT, err := MakeJWT(userID, tokenSecret, time.Second*30)
 	if err != nil {
 		t.Errorf("MakeJWT returned a non nil error: %v", err)
 	}
 
-	fmt.Println(jwt)
+	validatedUser, err := ValidateJWT(JWT, tokenSecret)
+	if err != nil {
+		t.Errorf("ValidateJWT(JWT, %s) returning error when trying to validate JWT: %v", tokenSecret, err)
+	}
+
+	if validatedUser != userID {
+		t.Errorf("validatedUser: %s, is not matching the provided userID: %s", validatedUser, userID)
+	}
+
+	_, err = ValidateJWT(JWT, wrongSecret)
+	if err == nil {
+		t.Errorf("ValidateJWT(JWT, %s) validated token when it should of failed wrong secret: %v", wrongSecret, err)
+	}
+
+	expiredJWT, err := MakeJWT(userID, tokenSecret, time.Second*0)
+	if err != nil {
+		t.Errorf("MakeJWT returned a non nil error: %v", err)
+	}
+
+	_, err = ValidateJWT(expiredJWT, tokenSecret)
+	if err == nil {
+		t.Errorf("ValidateJWT(expiredJWT, %s) validated token when it should of failed: expired", tokenSecret)
+	}
+
 }
