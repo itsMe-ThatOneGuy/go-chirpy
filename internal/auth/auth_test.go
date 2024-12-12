@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -68,6 +70,34 @@ func TestJWT(t *testing.T) {
 	_, err = ValidateJWT(expiredJWT, tokenSecret)
 	if err == nil {
 		t.Errorf("ValidateJWT(expiredJWT, %s) validated token when it should of failed: expired", tokenSecret)
+	}
+
+}
+
+func TestBearerToken(t *testing.T) {
+	testReq, _ := http.NewRequest("", "", nil)
+	testReq.Header.Set("Authorization", "Bearer testingbearer1234")
+
+	emptyAuthReq, _ := http.NewRequest("", "", nil)
+	emptyAuthReq.Header.Set("Authorization", "")
+
+	noJWTReq, _ := http.NewRequest("", "", nil)
+	noJWTReq.Header.Set("Authorization", "Bearer ")
+
+	_, err := GetBearerToken(testReq.Header)
+	if err != nil {
+		t.Errorf("GetBearerToken(testReq.Header) failed to get cleaned token: %v", err)
+	}
+
+	_, err = GetBearerToken(emptyAuthReq.Header)
+	if err == nil {
+		t.Errorf("GetBearerToken(emptyAuthReq.Header) did not error empty auth header: %v", err)
+	}
+
+	noJWTToken, err := GetBearerToken(noJWTReq.Header)
+	if err == nil {
+		fmt.Printf("noJWTToken: %s\n", noJWTToken)
+		t.Errorf("GetBearerToken(noJWTReq.Header) did not error bearer with out jwt")
 	}
 
 }
