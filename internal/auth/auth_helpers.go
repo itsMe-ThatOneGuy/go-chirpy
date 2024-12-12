@@ -25,5 +25,6 @@ func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 		Subject:   userID.String(),
 	})
 
-	return token.SignedString([]byte("chirpy"))
+	return token.SignedString([]byte(tokenSecret))
+}
 }
