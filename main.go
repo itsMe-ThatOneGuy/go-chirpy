@@ -87,6 +87,7 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+	Token     string    `json:"token"`
 }
 
 type Chirp struct {
@@ -165,17 +166,28 @@ func handleValidateChirp(w http.ResponseWriter, body string) string {
 
 func (cfg *apiConfig) handleChirp(w http.ResponseWriter, r *http.Request) {
 	type jsonReqParams struct {
-		Body   string    `json:"body"`
-		UserID uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 
 	type jsonResParams struct {
 		Chirp
 	}
 
+	bearerToken, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		responseError(w, http.StatusInternalServerError, "Error getting bearerToken", err)
+		return
+	}
+
+	jwtUserID, err := auth.ValidateJWT(bearerToken, cfg.seceret)
+	if err != nil {
+		responseError(w, http.StatusUnauthorized, "Error validating JWT", err)
+		return
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	params := jsonReqParams{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		responseError(w, http.StatusInternalServerError, "Error decoding parameter 1", err)
 		return
@@ -183,7 +195,7 @@ func (cfg *apiConfig) handleChirp(w http.ResponseWriter, r *http.Request) {
 
 	chirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
 		Body:   handleValidateChirp(w, params.Body),
-		UserID: params.UserID,
+		UserID: jwtUserID,
 	})
 	if err != nil {
 		responseError(w, http.StatusInternalServerError, "Error creating chirp", err)
@@ -294,8 +306,9 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 	type jsonReqParams struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email        string `json:"email"`
+		Password     string `json:"password"`
+		ExpiresInSec *int   `json:"expires_in_seconds"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -310,6 +323,13 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tokenExpiresIn := 3600
+	if params.ExpiresInSec != nil {
+		if *params.ExpiresInSec <= tokenExpiresIn {
+			tokenExpiresIn = *params.ExpiresInSec
+		}
+	}
+
 	user, err := cfg.db.GetUserByEmail(r.Context(), params.Email)
 	if err != nil {
 		responseError(w, http.StatusUnauthorized, "Incorrect email or password", nil)
@@ -317,9 +337,14 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = auth.CheckPasswordHash(params.Password, user.HashedPassword)
-	log.Println(err)
 	if err != nil {
 		responseError(w, http.StatusUnauthorized, "Incorrect email or password", nil)
+		return
+	}
+
+	token, err := auth.MakeJWT(user.ID, cfg.seceret, time.Duration(tokenExpiresIn)*time.Second)
+	if err != nil {
+		responseError(w, http.StatusInternalServerError, "Error decoding parameter", err)
 		return
 	}
 
@@ -328,6 +353,7 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email:     user.Email,
+		Token:     token,
 	})
 }
 
