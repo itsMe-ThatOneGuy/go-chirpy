@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"strings"
@@ -57,12 +59,12 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 }
 
 func GetBearerToken(headers http.Header) (string, error) {
-	rawBearer := headers.Get("Authorization")
-	if rawBearer == "" {
+	authReqHeader := headers.Get("Authorization")
+	if authReqHeader == "" {
 		return "", fmt.Errorf("Empty Authorization header")
 	}
 
-	token := strings.Split(rawBearer, " ")[1]
+	token := strings.Split(authReqHeader, " ")[1]
 	if token == "" {
 		return "", fmt.Errorf("Empty bearer token")
 	}
