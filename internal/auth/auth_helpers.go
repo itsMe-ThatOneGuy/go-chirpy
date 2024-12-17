@@ -69,3 +69,14 @@ func GetBearerToken(headers http.Header) (string, error) {
 
 	return strings.TrimSpace(token), nil
 }
+
+func MakeRefreshToken() (string, error) {
+	ranData, err := rand.Read(make([]byte, 32))
+	if err != nil {
+		return "", err
+	}
+
+	ranDataEncoded := hex.EncodeToString([]byte{byte(ranData)})
+
+	return ranDataEncoded, nil
+}
