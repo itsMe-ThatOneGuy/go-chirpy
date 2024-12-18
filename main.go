@@ -63,6 +63,7 @@ func main() {
 	mux.HandleFunc("GET /api/chirps", apiCfg.handleGetChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handleGetChirp)
 	mux.HandleFunc("POST /api/users", apiCfg.handleCreateUser)
+	mux.HandleFunc("PUT /api/users", apiCfg.handleUserUpdate)
 	mux.HandleFunc("POST /api/login", apiCfg.handleLogin)
 	mux.HandleFunc("POST /api/refresh", apiCfg.handleRefresh)
 	mux.HandleFunc("POST /api/revoke", apiCfg.handleRevoke)
@@ -422,6 +423,63 @@ func (cfg *apiConfig) handleRevoke(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (cfg *apiConfig) handleUserUpdate(w http.ResponseWriter, r *http.Request) {
+	type jsonReqParams struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	type jsonResParams struct {
+		User
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	params := jsonReqParams{}
+	err := decoder.Decode(&params)
+	if err != nil {
+		responseError(w, http.StatusInternalServerError, "Error decoding parameter", err)
+		return
+	}
+	if params.Email == "" {
+		responseError(w, http.StatusBadRequest, "Empty email", nil)
+		return
+	}
+
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		responseError(w, http.StatusUnauthorized, "Couldn't validate token", err)
+		return
+	}
+
+	userID, err := auth.ValidateJWT(token, cfg.seceret)
+	if err != nil {
+		responseError(w, http.StatusUnauthorized, "Couldn't validate token", err)
+		return
+	}
+
+	hashedPassword, err := auth.HashPassword(params.Password)
+
+	updatedUser, err := cfg.db.UpdateUser(r.Context(), database.UpdateUserParams{
+		Email:          params.Email,
+		HashedPassword: hashedPassword,
+		ID:             userID,
+	})
+	if err != nil {
+		responseError(w, http.StatusInternalServerError, "Couldn't update user info", err)
+		return
+	}
+
+	jsonResponse(w, http.StatusOK, jsonResParams{
+		User: User{
+			ID:        updatedUser.ID,
+			UpdatedAt: updatedUser.UpdatedAt,
+			CreatedAt: updatedUser.CreatedAt,
+			Email:     updatedUser.Email,
+		},
+	})
+
 }
 
 func responseError(w http.ResponseWriter, status int, msg string, err error) {
