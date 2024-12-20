@@ -547,6 +547,16 @@ func responseError(w http.ResponseWriter, status int, msg string, err error) {
 }
 
 func (cfg *apiConfig) handleUserUpgrade(w http.ResponseWriter, r *http.Request) {
+	key, err := auth.GetAPIKey(r.Header)
+	if err != nil {
+		responseError(w, http.StatusUnauthorized, "Authorization header error", err)
+		return
+	}
+	if key != cfg.polkaKey {
+		responseError(w, http.StatusUnauthorized, "ApiKey invaild", err)
+		return
+	}
+
 	type jsonReqParams struct {
 		Event string `json:"event"`
 		Data  struct {
@@ -556,7 +566,7 @@ func (cfg *apiConfig) handleUserUpgrade(w http.ResponseWriter, r *http.Request) 
 
 	decoder := json.NewDecoder(r.Body)
 	params := jsonReqParams{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		responseError(w, http.StatusInternalServerError, "Error decoding parameter", err)
 		return
