@@ -3,6 +3,7 @@ package auth
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -64,12 +65,36 @@ func GetBearerToken(headers http.Header) (string, error) {
 		return "", fmt.Errorf("Empty Authorization header")
 	}
 
-	token := strings.Split(authReqHeader, " ")[1]
+	splitHeader := strings.Split(authReqHeader, " ")
+	if splitHeader[0] != "Bearer" {
+		return "", fmt.Errorf("Authorization header is not a Bearer token")
+	}
+
+	token := splitHeader[1]
 	if token == "" {
 		return "", fmt.Errorf("Empty bearer token")
 	}
 
 	return strings.TrimSpace(token), nil
+}
+
+func GetAPIKey(headers http.Header) (string, error) {
+	authReqHeader := headers.Get("Authorization")
+	if authReqHeader == "" {
+		return "", errors.New("Empty Authorization header")
+	}
+
+	splitHeader := strings.Split(authReqHeader, " ")
+	if splitHeader[0] != "ApiKey" {
+		return "", fmt.Errorf("Authorization header is not an ApiKey")
+	}
+
+	key := splitHeader[1]
+	if key == "" {
+		return "", fmt.Errorf("Empty bearer token")
+	}
+
+	return strings.TrimSpace(key), nil
 }
 
 func MakeRefreshToken() (string, error) {
