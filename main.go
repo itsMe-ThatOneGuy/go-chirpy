@@ -38,6 +38,10 @@ func main() {
 	if seceret == "" {
 		log.Fatal("env variable SECERET not set")
 	}
+	polkaKey := os.Getenv("POLKA_KEY")
+	if polkaKey == "" {
+		log.Fatal("env variable POLKA_KEY not set")
+	}
 
 	dbCon, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -52,6 +56,7 @@ func main() {
 		db:             dbQueries,
 		platform:       platform,
 		seceret:        seceret,
+		polkaKey:       polkaKey,
 	}
 
 	mux := http.NewServeMux()
@@ -86,6 +91,7 @@ type apiConfig struct {
 	db             *database.Queries
 	platform       string
 	seceret        string
+	polkaKey       string
 }
 
 type User struct {
