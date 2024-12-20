@@ -201,7 +201,7 @@ func (cfg *apiConfig) handleChirp(w http.ResponseWriter, r *http.Request) {
 	params := jsonReqParams{}
 	err = decoder.Decode(&params)
 	if err != nil {
-		responseError(w, http.StatusInternalServerError, "Error decoding parameter 1", err)
+		responseError(w, http.StatusInternalServerError, "Error decoding parameters", err)
 		return
 	}
 
@@ -232,8 +232,22 @@ func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	queryUserID := r.URL.Query().Get("author_id")
+	authorID := uuid.Nil
+	if queryUserID != "" {
+		authorID, err = uuid.Parse(queryUserID)
+		if err != nil {
+			responseError(w, http.StatusBadRequest, "Invallid user ID", err)
+			return
+		}
+	}
+
 	chirps := make([]Chirp, len(dbChirps))
 	for i, chirp := range dbChirps {
+		if authorID != uuid.Nil && chirp.UserID != authorID {
+			continue
+		}
+
 		chirps[i] = Chirp{
 			ID:        chirp.ID,
 			CreatedAt: chirp.CreatedAt,
